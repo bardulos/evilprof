@@ -1,27 +1,28 @@
-# pdf_generator.py (Fixed type check for multiple choice)
+# pdf_generator.py
 import random
 import streamlit as st
 
-# Import e controllo per WeasyPrint
+from config import QUESTION_TYPE_MC
+
+# WeasyPrint import and availability check
 try:
     from weasyprint import HTML, CSS
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
 except OSError as e:
-     st.error(f"Errore nell'import di WeasyPrint (probabili dipendenze mancanti come Pango/Cairo): {e}")
-     WEASYPRINT_AVAILABLE = False
+    st.error(f"WeasyPrint import error (likely missing Pango/Cairo dependencies): {e}")
+    WEASYPRINT_AVAILABLE = False
 
 
 def generate_pdf_data(tests_data_lists, subject_name, status_callback, pdf_strings):
     """
-    Genera dati PDF. Chiama status_callback solo per errori WeasyPrint.
+    Generate PDF data. Calls status_callback only for WeasyPrint errors.
     """
     if not WEASYPRINT_AVAILABLE:
         status_callback("error", "PG_WEASYPRINT_UNAVAILABLE")
         return None
 
-    # CSS (invariato)
     css_style = """
          @page { size: A4; margin: 2cm; }
          body { font-family: Verdana, sans-serif; font-size: 11pt; line-height: 1.4; }
@@ -40,7 +41,7 @@ def generate_pdf_data(tests_data_lists, subject_name, status_callback, pdf_strin
     """
 
     html_parts = []
-    checkbox_char = "☐"
+    checkbox_char = "\u2610"
     safe_subject_name = subject_name.replace('<', '&lt;').replace('>', '&gt;') if subject_name else "Materia Non Specificata"
     title_format = pdf_strings.get("title_format", "Test for {subject_name}")
     name_label = pdf_strings.get("name_label", "Name:")
@@ -57,22 +58,19 @@ def generate_pdf_data(tests_data_lists, subject_name, status_callback, pdf_strin
         q_counter = 1
         for question_data in single_test_data:
             q_text = question_data.get('question', missing_question_text).strip().replace('\r', '').replace('<', '&lt;').replace('>', '&gt;')
-            q_type = question_data.get('type', 'Aperte') # Default ad Aperte se manca tipo
+            q_type = question_data.get('type', QUESTION_TYPE_MC)
             nbsp = "&nbsp;"
             test_html += f'<p class="question">{q_counter}.{nbsp}{q_text}</p>\n'
 
-            # --- CORREZIONE QUI: Usa 'Scelta Multipla' ---
-            # --- CORRECTION HERE: Use 'Scelta Multipla' ---
-            if q_type == 'Scelta Multipla':
-            # --- FINE CORREZIONE ---
-                answers = question_data.get('answers', []).copy(); random.shuffle(answers)
-                if not answers: test_html += f'<p class="answer">{no_options_text}</p>\n'
+            if q_type == QUESTION_TYPE_MC:
+                answers = question_data.get('answers', []).copy()
+                random.shuffle(answers)
+                if not answers:
+                    test_html += f'<p class="answer">{no_options_text}</p>\n'
                 else:
                     for answer in answers:
                         ans_text = str(answer).strip().replace('\r', '').replace('<', '&lt;').replace('>', '&gt;')
                         test_html += f'<p class="answer"><span class="checkbox">{checkbox_char}</span><span class="answer-text">{ans_text}</span></p>\n'
-            # Nessun blocco else necessario, le domande aperte non hanno output extra
-            # No else block needed, open-ended questions have no extra output
             q_counter += 1
         page_break_class = " page-break" if index > 0 else ""
         html_parts.append(f'<div class="test-container{page_break_class}">\n{test_html}\n</div>')

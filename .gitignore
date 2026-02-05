@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude/
+similarity_analysis_unified_dice_mc_15t.xlsx

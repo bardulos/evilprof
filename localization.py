@@ -1,4 +1,7 @@
-# localization.py (Corretta struttura testo INTRO_TEXT_NEW e aggiunta nuova chiave)
+# localization.py
+import logging
+
+logger = logging.getLogger(__name__)
 
 TEXTS = {
     "it": {
@@ -307,34 +310,34 @@ The application includes a functional test that performs an in-depth statistical
     }
 }
 
-# Funzioni get_text e format_text (invariate)
 def get_text(lang_code, key):
-    """Recupera il testo per una data chiave nella lingua specificata."""
-    lang_dict = TEXTS.get(lang_code, TEXTS.get("en", {})) # Default to English if lang_code not found
-    return lang_dict.get(key, f"MISSING_TEXT[{key}]") # Default to key if key not found in selected language
+    """Retrieve the text for a given key in the specified language."""
+    lang_dict = TEXTS.get(lang_code, TEXTS.get("en", {}))
+    return lang_dict.get(key, f"MISSING_TEXT[{key}]")
+
 
 def format_text(lang_code, key, **kwargs):
-     """Recupera testo e lo formatta con i parametri forniti."""
-     raw_text = get_text(lang_code, key)
-     if raw_text == f"MISSING_TEXT[{key}]":
-         # Fallback to English if key is missing in the current language but exists in English
-         if lang_code != "en":
-             raw_text_en = TEXTS.get("en", {}).get(key)
-             if raw_text_en:
-                 try:
-                     return raw_text_en.format(**kwargs)
-                 except KeyError as e_en:
-                     print(f"WARN (EN Fallback): Missing placeholder key {e_en} in text key '{key}' for lang 'en' when formatting with {kwargs}")
-                     return raw_text_en # Return raw English text if formatting fails
-                 except Exception as e_en_gen:
-                     print(f"WARN (EN Fallback): Generic formatting error for text key '{key}' with args {kwargs} for lang 'en': {e_en_gen}")
-                     return raw_text_en
-         return raw_text # Return "MISSING_TEXT[key]" if not in English either
-     try:
-         return raw_text.format(**kwargs)
-     except KeyError as e:
-         print(f"WARN: Missing placeholder key {e} in text key '{key}' for lang '{lang_code}' when formatting with {kwargs}")
-         return raw_text # Return raw text if specific placeholder is missing
-     except Exception as e_gen: # Catch other potential formatting errors
-         print(f"WARN: Generic formatting error for text key '{key}' with args {kwargs} for lang '{lang_code}': {e_gen}")
-         return raw_text
+    """Retrieve text and format it with the provided parameters."""
+    raw_text = get_text(lang_code, key)
+    if raw_text == f"MISSING_TEXT[{key}]":
+        # Fallback to English if key is missing in the current language
+        if lang_code != "en":
+            raw_text_en = TEXTS.get("en", {}).get(key)
+            if raw_text_en:
+                try:
+                    return raw_text_en.format(**kwargs)
+                except KeyError as e_en:
+                    logger.warning("EN Fallback: Missing placeholder key %s in text key '%s' for lang 'en' when formatting with %s", e_en, key, kwargs)
+                    return raw_text_en
+                except Exception as e_en_gen:
+                    logger.warning("EN Fallback: Generic formatting error for text key '%s' with args %s for lang 'en': %s", key, kwargs, e_en_gen)
+                    return raw_text_en
+        return raw_text
+    try:
+        return raw_text.format(**kwargs)
+    except KeyError as e:
+        logger.warning("Missing placeholder key %s in text key '%s' for lang '%s' when formatting with %s", e, key, lang_code, kwargs)
+        return raw_text
+    except Exception as e_gen:
+        logger.warning("Generic formatting error for text key '%s' with args %s for lang '%s': %s", key, kwargs, lang_code, e_gen)
+        return raw_text
